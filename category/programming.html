@@ -30,40 +30,135 @@
 
             <aside id="featured" class="body">
                 <article>
-                    <h1 class="entry-title"><a href="../multithreading-on-python.html">Multithreading on python</a></h1> 
+                    <h1 class="entry-title"><a href="../memoization-and-decorators.html">Memoization and decorators</a></h1> 
 <footer class="post-info">
-        <abbr class="published" title="2014-01-02T23:06:00">
-                Thu 02 January 2014
+        <abbr class="published" title="2014-01-03T23:06:00">
+                Fri 03 January 2014
         </abbr>
-<p>tags: <a href="../tag/python.html">python</a></p></footer><!-- /.post-info --><p>Many times we need a concurrent execution of our programs. This is just a reminder of how to use multithreading in python.</p>
+<p>tags: <a href="../tag/python.html">python</a></p></footer><!-- /.post-info --><p>Recursive functions can be very slow sometimes, here I show a situation where
+we can use the technique memoization to improve the speed of the execution.</p>
+<p>We have a function for calculating the fibonacci number of n:</p>
+<div class="highlight"><pre><span class="k">def</span> <span class="nf">fibonacci</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">n</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">n</span>
+        <span class="k">return</span> <span class="n">fibonacci</span><span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="n">fibonacci</span><span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">2</span><span class="p">)</span>
+</pre></div>
+<p>This solution repeats many times the same calculations, we can avoid that saving
+the previously calculated results in a dictionary.</p>
+<p>Here we have a module to save and get keys:</p>
+<div class="highlight"><pre><span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">OrderedDict</span>
+
+
+<span class="n">CACHE</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">()</span>
+<span class="n">MAX_SIZE</span> <span class="o">=</span> <span class="mi">100</span>
+
+<span class="k">def</span> <span class="nf">set_key</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="s">&quot;Set a key value, removing oldest key if MAX_SIZE exceeded&quot;</span>
+        <span class="n">CACHE</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">CACHE</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">MAX_SIZE</span><span class="p">:</span>
+                <span class="n">CACHE</span><span class="o">.</span><span class="n">popitem</span><span class="p">(</span><span class="n">last</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">get_key</span><span class="p">(</span><span class="n">key</span><span class="p">):</span>
+        <span class="s">&quot;Retrieve a key value from the cache, or None if not found&quot;</span>
+        <span class="k">return</span> <span class="n">CACHE</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+</pre></div>
+<p>Adding memoization to the function can be done using a decorator, a good
+choice is to make it easily reusable, it uses the previous module.</p>
+<div class="highlight"><pre><span class="k">def</span> <span class="nf">memoize_any_function</span><span class="p">(</span><span class="n">func_to_memoize</span><span class="p">):</span>
+        <span class="s">&quot;Return a wrapped version of the function using memoization&quot;</span>
+
+        <span class="k">def</span> <span class="nf">memoized_version_of_func</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+                <span class="s">&quot;Wrapper using memoization&quot;</span>
+                <span class="n">res</span> <span class="o">=</span> <span class="n">cache</span><span class="o">.</span><span class="n">get_key</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">res</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                        <span class="n">res</span> <span class="o">=</span> <span class="n">func_to_memoize</span><span class="p">(</span><span class="n">n</span><span class="p">)</span> <span class="c"># Call the real function</span>
+                        <span class="n">cache</span><span class="o">.</span><span class="n">set_key</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">res</span><span class="p">)</span>
+                <span class="k">return</span> <span class="n">res</span>
+
+        <span class="k">return</span> <span class="n">memoized_version_of_func</span>
+</pre></div>
+<p>The decoration of the function works putting &#64;memoize_any_function before the declaration of the function. So when it calls the fibonacci function it calls the decorator and it calls the original fibonacci function only when it doesn't have a previous result saved.</p>
+<div class="highlight"><pre><span class="kn">import</span> <span class="nn">cache</span>
+<span class="kn">import</span> <span class="nn">time</span>
+
+
+<span class="k">def</span> <span class="nf">memoize_any_function</span><span class="p">(</span><span class="n">func_to_memoize</span><span class="p">):</span>
+        <span class="s">&quot;Return a wrapped version of the function using memoization&quot;</span>
+
+        <span class="k">def</span> <span class="nf">memoized_version_of_func</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+                <span class="s">&quot;Wrapper using memoization&quot;</span>
+                <span class="n">res</span> <span class="o">=</span> <span class="n">cache</span><span class="o">.</span><span class="n">get_key</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">res</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                        <span class="n">res</span> <span class="o">=</span> <span class="n">func_to_memoize</span><span class="p">(</span><span class="n">n</span><span class="p">)</span> <span class="c"># Call the real function</span>
+                        <span class="n">cache</span><span class="o">.</span><span class="n">set_key</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">res</span><span class="p">)</span>
+                <span class="k">return</span> <span class="n">res</span>
+
+        <span class="k">return</span> <span class="n">memoized_version_of_func</span>
+
+<span class="nd">@memoize_any_function</span>
+<span class="k">def</span> <span class="nf">fibonacci</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+        <span class="s">&quot;calculates the fibonacci number for n using memoization&quot;</span>
+        <span class="k">if</span> <span class="n">n</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">n</span>
+        <span class="k">return</span> <span class="n">fibonacci</span><span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="n">fibonacci</span><span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">2</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">slowFibonacci</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+        <span class="s">&quot;calculates the fibonacci number for n without memoization&quot;</span>
+        <span class="k">if</span> <span class="n">n</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">n</span>
+        <span class="k">return</span> <span class="n">slowFibonacci</span><span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="n">slowFibonacci</span><span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">2</span><span class="p">)</span>
+
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&#39;__main__&#39;</span><span class="p">:</span>
+        <span class="n">ts</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="k">print</span> <span class="n">fibonacci</span><span class="p">(</span><span class="mi">35</span><span class="p">)</span>
+        <span class="n">te</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="k">print</span> <span class="s">&quot;Time elapsed: </span><span class="si">%2.8f</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">te</span><span class="o">-</span><span class="n">ts</span><span class="p">)</span>
+
+        <span class="n">ts</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="k">print</span> <span class="n">slowFibonacci</span><span class="p">(</span><span class="mi">35</span><span class="p">)</span>
+        <span class="n">te</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="k">print</span> <span class="s">&quot;Time elapsed: </span><span class="si">%2.8f</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">te</span><span class="o">-</span><span class="n">ts</span><span class="p">)</span>
+</pre></div>
+<p>Finally, the comparison between fibonacci and slowFibonacci reveals than memoization has improved seriously the speed of the function.</p>
+<p>While the first one has taken 0.00071907s to solve it, the second one has needed 18.74486518s in my execution.</p>
+<p>There are <a href="../memoization-and-decorators.html#disqus_thread">comments</a>.</p>                </article>
+            </aside><!-- /#featured -->
+                <section id="content" class="body">
+                    <hr />
+                    <ol id="posts-list" class="hfeed">
+        
+
+ 
+            <li><article class="hentry">    
+                <header>
+                    <h3><a href="../multithreading-on-python.html" rel="bookmark"
+                           title="Permalink to Multithreading on python">Multithreading on python</a></h3>
+                </header>
+                
+                <div class="entry-content">
+                <p>Many times we need a concurrent execution of our programs. This is just a reminder of how to use multithreading in python.</p>
 <div class="highlight"><pre><span class="c">#!/usr/bin/env python</span>
 
-    <span class="kn">import</span> <span class="nn">threading</span><span class="o">,</span> <span class="nn">time</span>
-    <span class="n">count</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="kn">import</span> <span class="nn">threading</span><span class="o">,</span> <span class="nn">time</span>
+<span class="n">count</span> <span class="o">=</span> <span class="mi">0</span>
 
 
-    <span class="k">def</span> <span class="nf">adder</span><span class="p">():</span>
-            <span class="k">global</span> <span class="n">count</span>
-            <span class="n">count</span> <span class="o">=</span> <span class="n">count</span> <span class="o">+</span> <span class="mi">1</span>
-            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.5</span><span class="p">)</span>
-            <span class="n">count</span> <span class="o">=</span> <span class="n">count</span> <span class="o">+</span> <span class="mi">1</span>
+<span class="k">def</span> <span class="nf">adder</span><span class="p">():</span>
+        <span class="k">global</span> <span class="n">count</span>
+        <span class="n">count</span> <span class="o">=</span> <span class="n">count</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.5</span><span class="p">)</span>
+        <span class="n">count</span> <span class="o">=</span> <span class="n">count</span> <span class="o">+</span> <span class="mi">1</span>
 
-    <span class="n">threads</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">100</span><span class="p">):</span>
-            <span class="n">thread</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">adder</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="p">())</span>
-            <span class="n">thread</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
-            <span class="n">threads</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">thread</span><span class="p">)</span>
-
-    <span class="k">for</span> <span class="n">thread</span> <span class="ow">in</span> <span class="n">threads</span><span class="p">:</span> <span class="n">thread</span><span class="o">.</span><span class="n">join</span><span class="p">()</span>
-    <span class="k">print</span><span class="p">(</span><span class="n">count</span><span class="p">)</span>
-</pre></div>
-<p>This program is quite simple and it's a quick reminder. It creates one hundred threads and uses them for increment a global variable.</p>
-<p>There are <a href="../multithreading-on-python.html#disqus_thread">comments</a>.</p>                </article>
+<span class="n">threads</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range ...</span></pre></div>
+                <a class="readmore" href="../multithreading-on-python.html">read more</a>
+                </div><!-- /.entry-content -->
+            </article></li>
+            </ol><!-- /#posts-list -->
 <p class="paginator">
     Page 1 / 1
 </p>
-            </aside><!-- /#featured -->
-            </ol><!-- /#posts-list -->
             </section><!-- /#content -->
         <section id="extras" class="body">
                 <div class="social">
